@@ -9,7 +9,7 @@ I developed a multimodal hybrid Retrieval-Augmented Generation (RAG) system that
 
 The system supports multiple model providers, allowing an SME to balance cost, performance, privacy and vendor dependency.
 
-![Image](https://github.com/user-attachments/assets/RAG_Chart.png)
+![Image](https://github.com/Emerald-Bit/Multimodal-Hybrid-RAG/blob/main/RAG_Chart.png)
 
 ## Core Tech Stack
 - AI and orchestration: LangChain, LangGraph, OpenAI, Google Gemini, Anthropic Claude, and Ollama.
@@ -46,7 +46,6 @@ For a property SME, this provides a controlled way to answer questions involving
 
 ## Data Ingestion:
 
-
 The ingestion pipeline accepts heterogeneous SME data including text and Markdown files, PDFs, images and audio. Text-heavy PDF pages are extracted directly, while visually complex pages and images can be processed with Florence-2 and audio can be transcribed with Whisper before the content is normalised into a common JSONL format.
 A SHA-256 content-hash system identifies files that have already been processed. File hashes are compared against a persistent hash cache so unchanged files can be skipped rather than repeatedly running document parsing, image captioning, transcription and embedding operations.
 This supports efficient incremental knowledge-base updates without rebuilding the entire corpus whenever new or changed property documents are added.
@@ -64,70 +63,45 @@ This reduces repeated compute, API expenditure and indexing time when the SME re
 The application maintains a separate Chroma-based semantic answer cache for previously answered questions. New queries are compared with cached questions using cosine similarity and, when the configured threshold is met, an existing answer can be returned without repeating retrieval and language-model generation.
 
 
+# Other Noticeable Features and Justifications
 
-Other Noticeable Features and Justifications
-
-
-
-
-Configurable LLM Providers
+## Configurable LLM Providers
 
 The application supports OpenAI, Google, Anthropic, and Ollama models through a common model-selection layer. This gives an SME flexibility to:
-Change providers without redesigning the API.
-Use hosted models for quality and scale.
-Use local Ollama models where privacy or operating cost is more important.
-Maintain a fallback model if the primary provider is unavailable.
+- Change providers without redesigning the API.
+- Use hosted models for quality and scale.
+- Use local Ollama models where privacy or operating cost is more important.
+- Maintain a fallback model if the primary provider is unavailable.
 
 
-Controlled Generation
+## Controlled Generation
 
 The generation layer uses structured prompts and retrieved documents as context. The API also includes input and output validation stages through LangGraph, helping prevent unsupported requests and reducing the likelihood of ungrounded responses.
 
-Document and Chunk Metadata
+## Document and Chunk Metadata
 
 Documents retain metadata such as source, document type, page number, and chunk identifiers. This supports traceability, debugging, filtering, and future source-link generation.
 
-Semantic Answer Caching
+## Semantic Answer Caching
 
 Repeated or semantically similar questions can be served from an answer cache. This reduces latency and lowers language-model expenditure for frequently asked questions.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Multi-Stage Request Validation:
+## Multi-Stage Request Validation:
 
 The API does not send every request directly to the RAG pipeline. An input-validation node checks whether the request is suitable for processing before retrieval begins. Invalid or unsupported requests are routed to a blocked-response node, reducing unnecessary model calls and helping protect the system from misuse.
 
-Separation of Retrieval, Generation and Validation:
+## Separation of Retrieval, Generation and Validation:
 
 The application uses layered controls rather than sending every request directly to the retrieval pipeline. A lightweight regex pre-filter rejects obvious suspicious inputs before graph execution, after which a LangGraph input-validation node determines whether the request should proceed or be routed to a blocked response.
 Retrieval and answer generation are separated from the final output-validation stage. This makes failures easier to isolate and allows retrieval, generation, input safety and output behaviour to be tested or modified independently.
 
-Metadata-Aware Document Storage:
+## Metadata-Aware Document Storage:
 
 Documents and chunks retain metadata such as source, document type, page number, chunk identifiers and retrieval scores. This supports filtering, traceability, debugging and the later presentation of source references to users.
 
 
-Hosted and Local Model Options:
+## Hosted and Local Model Options:
 
 Ollama provides a local model route for situations where an SME wants to reduce external API dependency or keep selected workloads on-premises. Hosted providers remain available when higher capability or easier scaling is required.
 
@@ -159,74 +133,85 @@ The service distinguishes between a cache hit, successful retrieval, web-assiste
 
 # Evaluations
 
+![Image](https://github.com/Emerald-Bit/Multimodal-Hybrid-RAG/blob/main/evals.png)
+
 ## Evaluation and Testing
 
 The project uses a multi-layer evaluation approach covering retrieval quality, answer quality, latency, behavioural edge cases and adversarial safety testing. This provides a more complete view of RAG performance than relying on a single accuracy metric.
-Synthetic Evaluation Dataset:
+
+## Synthetic Evaluation Dataset:
 A synthetic evaluation dataset was generated using Evidently's RAG dataset-generation tooling. The benchmark contains realistic questions generated from the source documents, with each test case containing a question, target answer, expected context and expected source identifiers.
 Persisting the expected source IDs directly in the evaluation dataset provides stable ground truth for retrieval testing. This avoids having to recreate expected documents from article titles during later evaluation runs and makes results easier to reproduce and compare.
 The dataset acted as a repeatable regression benchmark for testing changes to retrieval, chunking, prompts and model configuration. 
 
 
-LLM-Based RAG Evaluation:
+##LLM-Based RAG Evaluation:
 Evidently is used to evaluate generated responses in addition to the deterministic retrieval metrics.
+
 The evaluation workflow measures:
-Context Relevance: Whether the retrieved evidence is relevant to the user's question.
-Faithfulness: Whether the generated response is supported by the retrieved context.
-Context Quality: Whether the retrieved evidence provides sufficient useful information for answering the question.
-Correctness: Whether the generated answer is consistent with the expected answer in the evaluation dataset.
+- Context Relevance: Whether the retrieved evidence is relevant to the user's question.
+- Faithfulness: Whether the generated response is supported by the retrieved context.
+- Context Quality: Whether the retrieved evidence provides sufficient useful information for answering the question.
+- Correctness: Whether the generated answer is consistent with the expected answer in the evaluation dataset.
+
 This separates retrieval failures from generation failures. A poor answer can therefore be investigated to determine whether the system retrieved the wrong evidence or whether the language model failed to use correct evidence appropriately.
 Evaluation runs are stored in a local Evidently workspace, allowing results to be inspected and compared without requiring Evidently's hosted cloud service.
-Edge-Case Regression Testing:
+
+## Edge-Case Regression Testing:
 A separate fixed regression suite tests behaviours that are not adequately represented by retrieval metrics alone.
 The current test set covers scenarios including:
-Ambiguous questions
-Incomplete input
-Multi-part questions
-Foreign-language requests
-Brand-safety scenarios
+- Ambiguous questions
+- Incomplete input
+- Multi-part questions
+- Foreign-language requests
+- Brand-safety scenarios
+
 Each test defines the expected application behaviour, sends the input through the RAG application and uses an LLM judge to classify the result as PASS or FAIL. Response latency is recorded alongside the judgement.
 The initial tests successfully identified behavioural weaknesses rather than producing artificially perfect results. Ambiguous and incomplete queries passed their expected-behaviour checks, while the initial brand-safety, foreign-language and multi-part tests exposed areas requiring further refinement.
 These tests are designed primarily as regression cases. Once behaviour is corrected, the same inputs can be rerun after changes to models, prompts or application logic to identify whether previously resolved problems have returned.
-Automated Red-Team Agent:
+
+## Automated Red-Team Agent:
 A dedicated defensive red-team agent provides exploratory adversarial testing in addition to the fixed regression suite.
+
 The red-team agent generates synthetic attacks across eight major categories:
-Prompt injection
-Jailbreaks
-Harmful content
-Data security
-Illegal activities
-Forbidden or regulated domains
-Manipulation attempts
-Sensitive scenarios
+- Prompt injection
+- Jailbreaks
+- Harmful content
+- Data security
+- Illegal activities
+- Forbidden or regulated domains
+- Manipulation attempts
+- Sensitive scenarios
+
 These categories contain more specific attack types such as system-prompt extraction, instruction override, roleplay bypasses, context leakage, cross-tenant leakage, fraud attempts, unauthorised business commitments and vulnerable-user scenarios.
 
 
 The red-team wrapper also records retrieved document evidence alongside the draft RAG answer and final validated answer. This allows failures to be investigated as either retrieval-level or generation-level problems rather than judging only the final response.
-Structured Red-Team Findings:
+
+## Structured Red-Team Findings:
 Red-team results are returned using a structured Pydantic schema containing:
-Category and subcategory
-Severity
-Generated attack query
-Expected safe behaviour
-Actual behaviour
-PASS/FAIL result
-Supporting evidence
-Retrieved-document evidence
-Recommended remediation
-Findings are persisted to JSONL after each test. This creates an auditable record of adversarial testing that can be reviewed over time and used to determine whether security changes have resolved previously discovered weaknesses.
+- Category and subcategory
+- Severity
+- Generated attack query
+- Expected safe behaviour
+- Actual behaviour
+- PASS/FAIL result
+- Supporting evidence
+- Retrieved-document evidence
+- Recommended remediation
+- Findings are persisted to JSONL after each test. This creates an auditable record of adversarial testing that can be reviewed over time and used to determine whether security changes have resolved previously discovered weaknesses.
 
-
-Fixed Testing and Exploratory Red Teaming:
+## Fixed Testing and Exploratory Red Teaming:
 The two safety testing approaches serve different purposes.
 Fixed edge case tests provide repeatable regression testing against known scenarios, while the red-team agent generates new adversarial variations to discover failures that may not already exist in the test suite.
 Together, these provide both repeatability and broader exploratory coverage.
-Evaluation-Driven Development:
+
+## Evaluation-Driven Development:
 Evaluation outputs are retained at both summary and individual-query level. This allows changes to chunk size, overlap, retrieval configuration, ranking, prompts and models to be compared quantitatively rather than selected solely through manual inspection.
 The evaluation process therefore acts as a pre-release quality check for changes to the RAG system, helping identify whether an improvement in one area introduces regressions elsewhere.
 The existing numerical chunking and latency results were produced against the earlier retrieval baseline. As the application has since expanded to include hybrid retrieval, reranking, caching and conditional web research, the same evaluation workflow can be rerun against the newer architecture before attributing the earlier benchmark figures directly to the current production oriented design.
 
-Prompt Engineering
+## Prompt Engineering:
 Prompt engineering is treated as a measurable and version-controlled part of the RAG system rather than a one-off set of instructions. Prompts are stored and loaded through MLflow with explicit versioning, allowing alternative prompt designs to be tested without changing the production application code. During evaluation, a selected prompt can be injected into a dedicated RAG evaluation endpoint while the semantic answer cache is bypassed, ensuring that each test reflects the behaviour of the prompt currently under review. Prompt variants are then scored against expected answers and facts for correctness, alongside behavioural criteria such as conciseness and professional tone. This provides a repeatable way to compare prompt changes, track improvements between versions and reduce the risk of deploying prompt modifications based only on subjective judgement.
 
 
