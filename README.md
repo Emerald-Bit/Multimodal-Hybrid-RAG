@@ -9,6 +9,7 @@ I developed a multimodal hybrid Retrieval-Augmented Generation (RAG) system that
 
 The system supports multiple model providers, allowing an SME to balance cost, performance, privacy and vendor dependency.
 
+![Image](https://github.com/user-attachments/assets/RAG_Chart.png)
 
 ## Core Tech Stack
 - AI and orchestration: LangChain, LangGraph, OpenAI, Google Gemini, Anthropic Claude, and Ollama.
