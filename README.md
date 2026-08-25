@@ -3,7 +3,6 @@
 ## The Problem
 A property SME was managing a growing volume of leases, property reports, planning and compliance documents, contractor records, images and external information across disconnected files and formats. Staff had to search and cross-check these sources manually when responding to operational and client queries. This made research slow and made it difficult to maintain a clear evidence trail behind decisions. They needed a practical knowledge system that could search property information quickly, that was sourced, and remain maintainable as new documents were added.
 
-
 ## The Solution
 I developed a multimodal hybrid Retrieval-Augmented Generation (RAG) system that allows users to ask questions about an organisation’s document collection. The system retrieves relevant source material, combines semantic and keyword search, reranks the results, and generates an answer. If the system decides it cannot provide a sufficient answer, it will utilise three parallel web-agents to gather the relevant information externally. 
 
@@ -22,51 +21,37 @@ The system supports multiple model providers, allowing an SME to balance cost, p
 - Evaluation: Evidently AI and MLflow LLM-as-Judge, synthetic golden dataset generation from corpus, retrieval quality testing (Precision@K, Recall@K and NDCG@K), chunking experiments, latency measurements and automated defensive red-team testing.
 
  
-
-
-
 # Key Features and Engineering Justifications
 
 ## Hybrid Knowledge Retrieval
-
 The system combines Elasticsearch BM25 search with Chroma vector retrieval. BM25 handles exact terms, names and identifiers, while embeddings handle semantic similarity. This combination is more suitable for SME documents than relying on keyword or vector search alone.
 
 ## Reranking for Context Quality
-
 Initial results are reranked with FlashRank before being passed to the language model. This reduces irrelevant context, improves the quality of the evidence supplied to the model and helps control prompt size and token usage. FlashRank in particular was chosen for its speed.
 
-
-##Corrective RAG with Parallel Web Research:
+## Corrective RAG with Parallel Web Research:
 The system implements a Corrective RAG workflow that evaluates the quality of retrieved internal evidence before generating an answer. After hybrid retrieval and FlashRank reranking, the system checks both the highest document relevance score and the average relevance of the top three results. If the internal evidence falls below configured confidence thresholds, the workflow automatically escalates to external web research rather than generating a confident answer from weak context.
 A planning agent converts the original question into exactly three targeted research queries. These are then executed concurrently through three parallel web-search agent calls using asynchronous execution. Running the searches in parallel reduces the additional latency introduced by corrective retrieval while allowing the system to investigate the question from multiple search angles.
 The resulting web sources are converted into the same document format used by the internal RAG pipeline, duplicate URLs are removed, and the external evidence is combined with the internal retrieved documents before final answer generation.
 For a property SME, this provides a controlled way to answer questions involving recent planning changes, regulations, market developments or other information that may not yet exist in the company’s internal knowledge base.
 
-
-
 ## Data Ingestion
-
 The ingestion pipeline accepts heterogeneous SME data including text and Markdown files, PDFs, images and audio. Text-heavy PDF pages are extracted directly, while visually complex pages and images can be processed with Florence-2 and audio can be transcribed with Whisper before the content is normalised into a common JSONL format.
 A SHA-256 content-hash system identifies files that have already been processed. File hashes are compared against a persistent hash cache so unchanged files can be skipped rather than repeatedly running document parsing, image captioning, transcription and embedding operations.
 This supports efficient incremental knowledge-base updates without rebuilding the entire corpus whenever new or changed property documents are added.
 
-
-
 ## Embedding Caching
-
 Embedding generation is wrapped with LangChain CacheBackedEmbeddings and a local file store. Previously calculated embeddings can therefore be reused instead of repeatedly calling a hosted embedding API or recomputing vectors with the local model.
 Cache namespaces include the embedding model and version so vectors produced by different configurations remain separate. SHA-256 cache keys provide stable lookup identifiers, while query-embedding caching can be enabled or disabled through configuration.
 This reduces repeated compute, API expenditure and indexing time when the SME refreshes a largely unchanged document collection.
 
 ## Semantic Answer Caching
-
 The application maintains a separate Chroma-based semantic answer cache for previously answered questions. New queries are compared with cached questions using cosine similarity and, when the configured threshold is met, an existing answer can be returned without repeating retrieval and language-model generation.
 
 
 # Other Noticeable Features and Justifications
 
 ## Configurable LLM Providers
-
 The application supports OpenAI, Google, Anthropic, and Ollama models through a common model-selection layer. This gives an SME flexibility to:
 - Change providers without redesigning the API.
 - Use hosted models for quality and scale.
