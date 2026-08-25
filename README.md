@@ -11,6 +11,7 @@ The system supports multiple model providers, allowing an SME to balance cost, p
 
 ![Image](https://github.com/Emerald-Bit/Multimodal-Hybrid-RAG/blob/main/RAG_Chart.png)
 
+
 ## Core Tech Stack
 - AI and orchestration: LangChain, LangGraph, OpenAI, Google Gemini, Anthropic Claude, and Ollama.
 - Backend: Python, FastAPI, Pydantic, asynchronous request handling.
@@ -35,7 +36,6 @@ The system supports multiple model providers, allowing an SME to balance cost, p
   * [Configurable LLM Providers](#configurable-llm-providers)
   * [Controlled Generation](#controlled-generation)
   * [Document and Chunk Metadata](#document-and-chunk-metadata)
-  * [Semantic Answer Caching](#semantic-answer-caching-1)
   * [Multi-Stage Request Validation](#multi-stage-request-validation)
   * [Separation of Retrieval, Generation and Validation](#separation-of-retrieval-generation-and-validation)
   * [Metadata-Aware Document Storage](#metadata-aware-document-storage)
@@ -70,6 +70,9 @@ The resulting web sources are converted into the same document format used by th
 For a property SME, this provides a controlled way to answer questions involving recent planning changes, regulations, market developments or other information that may not yet exist in the company’s internal knowledge base.
 
 ## Data Ingestion
+
+![Image](https://github.com/Emerald-Bit/Multimodal-Hybrid-RAG/blob/main/data_ingest_pipeline.png)
+
 The ingestion pipeline accepts heterogeneous SME data including text and Markdown files, PDFs, images and audio. Text-heavy PDF pages are extracted directly, while visually complex pages and images can be processed with Florence-2 and audio can be transcribed with Whisper before the content is normalised into a common JSONL format.
 A SHA-256 content-hash system identifies files that have already been processed. File hashes are compared against a persistent hash cache so unchanged files can be skipped rather than repeatedly running document parsing, image captioning, transcription and embedding operations.
 This supports efficient incremental knowledge-base updates without rebuilding the entire corpus whenever new or changed property documents are added.
