@@ -1,5 +1,6 @@
 # Multimodal-Hybrid-RAG
 
+
 ## The Problem
 A property SME was managing a growing volume of leases, property reports, planning and compliance documents, contractor records, images and external information across disconnected files and formats. Staff had to search and cross-check these sources manually when responding to operational and client queries. This made research slow and made it difficult to maintain a clear evidence trail behind decisions. They needed a practical knowledge system that could search property information quickly, that was sourced, and remain maintainable as new documents were added.
 
@@ -22,6 +23,39 @@ The system supports multiple model providers, allowing an SME to balance cost, p
 
  
 # Key Features and Engineering Justifications
+## Table of Contents
+* [Key Features and Engineering Justifications](#key-features-and-engineering-justifications)
+  * [Hybrid Knowledge Retrieval](#hybrid-knowledge-retrieval)
+  * [Reranking for Context Quality](#reranking-for-context-quality)
+  * [Corrective RAG with Parallel Web Research:](#corrective-rag-with-parallel-web-research)
+  * [Data Ingestion](#data-ingestion)
+  * [Embedding Caching](#embedding-caching)
+  * [Semantic Answer Caching](#semantic-answer-caching)
+* [Other Noticeable Features and Justifications](#other-noticeable-features-and-justifications)
+  * [Configurable LLM Providers](#configurable-llm-providers)
+  * [Controlled Generation](#controlled-generation)
+  * [Document and Chunk Metadata](#document-and-chunk-metadata)
+  * [Semantic Answer Caching](#semantic-answer-caching-1)
+  * [Multi-Stage Request Validation](#multi-stage-request-validation)
+  * [Separation of Retrieval, Generation and Validation](#separation-of-retrieval-generation-and-validation)
+  * [Metadata-Aware Document Storage](#metadata-aware-document-storage)
+  * [Hosted and Local Model Options](#hosted-and-local-model-options)
+  * [Fallback Model Handling](#fallback-model-handling)
+  * [Short-Term and Long-Term Memory Separation](#short-term-and-long-term-memory-separation)
+  * [Thread-Based Workflow Continuity](#thread-based-workflow-continuity)
+  * [Operational Guardrails](#operational-guardrails)
+  * [Graceful Failure Boundaries](#graceful-failure-boundaries)
+* [Evaluations](#evaluations)
+  * [Evaluation and Testing](#evaluation-and-testing)
+  * [Synthetic Evaluation Dataset](#synthetic-evaluation-dataset)
+  * [LLM-Based RAG Evaluation](#llm-based-rag-evaluation)
+  * [Edge-Case Regression Testing](#edge-case-regression-testing)
+  * [Automated Red-Team Agent](#automated-red-team-agent)
+  * [Structured Red-Team Findings](#structured-red-team-findings)
+  * [Fixed Testing and Exploratory Red Teaming](#fixed-testing-and-exploratory-red-teaming)
+  * [Evaluation-Driven Development](#evaluation-driven-development)
+  * [Prompt Engineering](#prompt-engineering)
+
 
 ## Hybrid Knowledge Retrieval
 The system combines Elasticsearch BM25 search with Chroma vector retrieval. BM25 handles exact terms, names and identifiers, while embeddings handle semantic similarity. This combination is more suitable for SME documents than relying on keyword or vector search alone.
@@ -29,7 +63,7 @@ The system combines Elasticsearch BM25 search with Chroma vector retrieval. BM25
 ## Reranking for Context Quality
 Initial results are reranked with FlashRank before being passed to the language model. This reduces irrelevant context, improves the quality of the evidence supplied to the model and helps control prompt size and token usage. FlashRank in particular was chosen for its speed.
 
-## Corrective RAG with Parallel Web Research:
+## Corrective RAG with Parallel Web Research
 The system implements a Corrective RAG workflow that evaluates the quality of retrieved internal evidence before generating an answer. After hybrid retrieval and FlashRank reranking, the system checks both the highest document relevance score and the average relevance of the top three results. If the internal evidence falls below configured confidence thresholds, the workflow automatically escalates to external web research rather than generating a confident answer from weak context.
 A planning agent converts the original question into exactly three targeted research queries. These are then executed concurrently through three parallel web-search agent calls using asynchronous execution. Running the searches in parallel reduces the additional latency introduced by corrective retrieval while allowing the system to investigate the question from multiple search angles.
 The resulting web sources are converted into the same document format used by the internal RAG pipeline, duplicate URLs are removed, and the external evidence is combined with the internal retrieved documents before final answer generation.
@@ -66,10 +100,6 @@ The generation layer uses structured prompts and retrieved documents as context.
 ## Document and Chunk Metadata
 
 Documents retain metadata such as source, document type, page number, and chunk identifiers. This supports traceability, debugging, filtering, and future source-link generation.
-
-## Semantic Answer Caching
-
-Repeated or semantically similar questions can be served from an answer cache. This reduces latency and lowers language-model expenditure for frequently asked questions.
 
 
 ## Multi-Stage Request Validation
